@@ -75,6 +75,7 @@ package ALSU_pkg;
   
     covergroup cvr_grp (@posedge clk);
       
+      // All Values of A
       coverpoint A : A_cp {
 
         bins A_data_0 = {0};
@@ -83,15 +84,9 @@ package ALSU_pkg;
         bins A_data_default = default;
         bins A_data_walkingones = {001, 010, 100};
 
-      }
+      }      
       
-      coverpoint A iff(red_op_A) {
-        
-        bins A_walkingones[] = {001, 010, 100};
-
-      }
-      
-      
+      // All Values of B
       coverpoint B : B_cp {
 
         bins B_data_0 = {0};
@@ -102,53 +97,72 @@ package ALSU_pkg;
 
       }
 
-      coverpoint B iff(red_op_B && !red_op_A) {
-        
+      // For Cross Coverage of A and B during Reduction
+      coverpoint A : A_wo {
+        bins A_walkingones[] = {001, 010, 100};
+        bins A_zer = {0};
+      }
+
+      coverpoint B : B_wo {        
         bins B_walkingones[] = {001, 010, 100};
+        bins B_zer = {0};
 
       }
 
+      cross A_wo, B_wo {
+        
+        if(red_op_A) {
+          bins A_wo_B_zer = binsof(A_wo.A_data_walkingones) * binsof(B_wo.B_zer);
+        } 
+        
+        if(!red_op_A && red_op_B) {
+          bins B_wo_A_zer = binsof(B_wo.B_data_walkingones) * binsof(A_wo.A_zer);
+        } 
+
+      } iff(opcode == OR || opcode == XOR);
+
+
+      // Coverpoints for ALU Opcode Values
       coverpoint opcode : ALU_cp {
 
         bins Bins_shift[]   = {SHIFT, ROTATE};
         bins Bins_arith[]   = {ADD, MULT};
         bins Bins_bitwise[] = {OR, XOR};
-        bins Bins_invalid = {INVALID_6, INVALID_7};
+        illegal_bins Bins_invalid = {INVALID_6, INVALID_7};
         bins Bins_trans = (OR => XOR => ADD => MULT => SHIFT => ROTATE);
 
       }
 
+      // Coverpoints for cin while ALU is in Addition
       coverpoint cin: cin_cp {
 
         bins cin_zero = {0};
         bins cin_one  = {1};
 
-      }
+      } iff (opcode == ADD);
 
+
+      // Coverpoints for serial while ALU is in Shift
       coverpoint serial_in: serial_cp {
 
         if (opcode == SHIFT) {
           bins shift_serial_in = {0, 1};
         }
 
-      }
+      } iff (opcode == SHIFT);
       
+
+      // Coverpoints for direction while ALU is in Shift or Rotate
       coverpoint direction: direction_cp {
+  
+        bins left_direction = {0};
+        bins right_direction = {1};
 
-        if (opcode == SHIFT || opcode == ROTATE) {
-          bins shift_rotate_direction = {0, 1};
-        }
+      } iff (opcode == SHIFT || opcode == ROTATE)
 
-      }
 
+      // Cross Coverage for all permutations of A_B "Max, Min, Zero" while ALU is Arithmetic
       cross A_cp, B_cp {
-
-        ///////////////////////////////
-
-      } iff ( (opcode == OR || opcode == XOR) && (red_op_A) );
-
-
-      cross A_cp, B_cp, cin_cp {
         
         bins AB_pos_pos = binsof(A_cp.A_data_max) * binsof(B_cp.B_data_max);
         bins AB_pos_neg = binsof(A_cp.A_data_max) * binsof(B_cp.B_data_min);
@@ -165,6 +179,18 @@ package ALSU_pkg;
       } iff( (opcode == ADD) || (opcode == MULT) );
 
 
+      // Reduction operation is activated while the opcode is not OR or XOR
+      coverpoint red_op_A : red_A_cp {
+
+        illegal_bins red_A = {1}; 
+      
+      } iff (opcode != OR && opcode != XOR);
+      
+      coverpoint red_op_B : red_B_cp {
+      
+        illegal_bins red_B = {1}; 
+      
+      } iff (opcode != OR && opcode != XOR);
 
 
     endgroup
