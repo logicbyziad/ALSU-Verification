@@ -17,8 +17,8 @@ package ALSU_pkg;
     rand bit    cin, serial_in, direction,
                 red_op_A, red_op_B,
                 bypass_A, bypass_B;
-    bit [5:0]   out;
-    bit [15:0]  leds;
+    bit [5:0]   out_exp;
+    bit [15:0]  leds_exp;
     bit clk, rst;
 
     /////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,13 +57,17 @@ package ALSU_pkg;
       bypass_B dist {0:/10, 1:/90};
     } 
 
-    constraint unique_op_arr {
+    // Special Constraint for an array of unique opcodes
+    constraint opcode_arr_un {
 
       foreach (op_arr[i]) {
-          op_arr[i] inside {OR, XOR, ADD, MULT, SHIFT, ROTATE};
+        foreach (op_arr[j]) {  
+          if (i != j) {  
+            op_arr[i] != op_arr[j];
+            op_arr[i] inside {[OR:ROTATE]};
+          }
+        }
       }
-
-      unique {op_arr};
 
     }
 
